@@ -141,8 +141,9 @@ class FMPProvider(DataProvider):
         ("senate-latest", "Senate"),
         ("house-latest", "House"),
     ]
+    # FMP's free plan caps the `limit` parameter at 25 per page.
 
-    def __init__(self, api_key: str, timeout: int = 20, limit: int = 100):
+    def __init__(self, api_key: str, timeout: int = 20, limit: int = 25):
         if not api_key:
             raise ValueError("FMP API key is required (set FMP_API_KEY).")
         self.api_key = api_key
