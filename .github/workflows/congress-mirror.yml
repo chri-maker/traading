@@ -7,9 +7,10 @@ name: Congress mirror (daily)
 # is ~09:35 ET during US daylight saving (EDT). In winter (EST) market open is
 # 14:30 UTC — adjust the cron, or rely on the in-job market-open check (orders
 # are only submitted when the market is actually open; the email still sends).
+# NOTE: the scheduled trigger is disabled — the AI strategy (ai-strategy.yml) is
+# now the scheduled trader, to avoid two bots rebalancing the same account. This
+# workflow stays available to run manually (and the AI job reuses its data).
 on:
-  schedule:
-    - cron: "35 13 * * 1-5"
   workflow_dispatch:
     inputs:
       dry_run:

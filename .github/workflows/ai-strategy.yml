@@ -1,0 +1,58 @@
+name: AI strategy (daily)
+
+# Claude proposes a long-only target portfolio from a fixed universe (recent
+# prices/returns + congressional-trade signals) and the bot executes it on the
+# PAPER account behind hard guardrails. Runs each weekday after market open.
+#
+# Requires secret ANTHROPIC_API_KEY (plus the Alpaca secrets). FMP key is
+# optional — only used to add congressional-trade signals to the prompt.
+on:
+  schedule:
+    - cron: "40 13 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Compute + email but place no orders"
+        type: boolean
+        default: false
+
+concurrency:
+  group: ai-strategy
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run AI strategy
+        env:
+          ALPACA_API_KEY_ID: ${{ secrets.ALPACA_API_KEY_ID }}
+          ALPACA_API_SECRET_KEY: ${{ secrets.ALPACA_API_SECRET_KEY }}
+          ALPACA_BASE_URL: ${{ vars.ALPACA_BASE_URL || 'https://paper-api.alpaca.markets' }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          AI_MODEL: ${{ vars.AI_MODEL || 'claude-sonnet-4-6' }}
+          AI_ALLOCATION: ${{ vars.AI_ALLOCATION || '0.5' }}
+          AI_MAX_POSITIONS: ${{ vars.AI_MAX_POSITIONS || '8' }}
+          AI_MAX_POSITION_PCT: ${{ vars.AI_MAX_POSITION_PCT || '0.25' }}
+          AI_UNIVERSE: ${{ vars.AI_UNIVERSE }}
+          AI_USE_CONGRESS: ${{ vars.AI_USE_CONGRESS || 'true' }}
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY1 || secrets.FMP_API_KEY }}
+          CONGRESS_PROVIDER: ${{ vars.CONGRESS_PROVIDER || 'auto' }}
+          SMTP_HOST: ${{ vars.SMTP_HOST || 'smtp.gmail.com' }}
+          SMTP_PORT: ${{ vars.SMTP_PORT || '587' }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          EMAIL_FROM: ${{ vars.EMAIL_FROM }}
+          EMAIL_TO: ${{ vars.EMAIL_TO }}
+        run: |
+          python -m scripts.ai_trade ${{ inputs.dry_run && '--dry-run' || '' }}
