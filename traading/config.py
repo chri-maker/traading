@@ -118,7 +118,7 @@ class CongressConfig:
 def load_congress_config() -> CongressConfig:
     """Build a CongressConfig from the environment (secrets optional until used)."""
     return CongressConfig(
-        provider=os.getenv("CONGRESS_PROVIDER", "fmp"),
+        provider=os.getenv("CONGRESS_PROVIDER", "stockwatcher"),
         fmp_api_key=os.getenv("FMP_API_KEY", ""),
         window_days=int(os.getenv("CONGRESS_WINDOW_DAYS", "365")),
         min_trades=int(os.getenv("CONGRESS_MIN_TRADES", "3")),
