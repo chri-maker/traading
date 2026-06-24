@@ -1,0 +1,16 @@
+[
+  {"chamber": "House", "representative": "Nancy Pelosi", "party": "Democrat", "ticker": "NVDA", "type": "Purchase", "transactionDate": "2026-01-15", "disclosureDate": "2026-02-10", "amount": "$1,000,001 - $5,000,000", "assetType": "Stock"},
+  {"chamber": "House", "representative": "Nancy Pelosi", "party": "Democrat", "ticker": "AAPL", "type": "Purchase", "transactionDate": "2026-02-20", "disclosureDate": "2026-03-12", "amount": "$250,001 - $500,000", "assetType": "Stock"},
+  {"chamber": "House", "representative": "Nancy Pelosi", "party": "Democrat", "ticker": "GOOGL", "type": "Purchase", "transactionDate": "2026-03-05", "disclosureDate": "2026-04-01", "amount": "$500,001 - $1,000,000", "assetType": "Stock"},
+  {"chamber": "House", "representative": "Nancy Pelosi", "party": "Democrat", "ticker": "AAPL", "type": "Sale (Partial)", "transactionDate": "2026-04-10", "disclosureDate": "2026-05-02", "amount": "$100,001 - $250,000", "assetType": "Stock"},
+
+  {"chamber": "Senate", "firstName": "Tommy", "lastName": "Tuberville", "party": "Republican", "symbol": "MSFT", "type": "Purchase", "transactionDate": "2026-01-22", "dateRecieved": "2026-02-15", "amount": "$15,001 - $50,000", "assetType": "Stock"},
+  {"chamber": "Senate", "firstName": "Tommy", "lastName": "Tuberville", "party": "Republican", "symbol": "TSLA", "type": "Purchase", "transactionDate": "2026-02-28", "dateRecieved": "2026-03-20", "amount": "$50,001 - $100,000", "assetType": "Stock"},
+  {"chamber": "Senate", "firstName": "Tommy", "lastName": "Tuberville", "party": "Republican", "symbol": "XOM", "type": "Purchase", "transactionDate": "2026-03-30", "dateRecieved": "2026-04-22", "amount": "$1,001 - $15,000", "assetType": "Stock"},
+
+  {"chamber": "Senate", "firstName": "Ron", "lastName": "Wyden", "party": "Democrat", "symbol": "SPY", "type": "Purchase", "transactionDate": "2026-02-01", "dateRecieved": "2026-02-25", "amount": "$1,001 - $15,000", "assetType": "Stock"},
+  {"chamber": "Senate", "firstName": "Ron", "lastName": "Wyden", "party": "Democrat", "symbol": "KO", "type": "Sale", "transactionDate": "2026-03-15", "dateRecieved": "2026-04-05", "amount": "$15,001 - $50,000", "assetType": "Stock"},
+  {"chamber": "Senate", "firstName": "Ron", "lastName": "Wyden", "party": "Democrat", "symbol": "JNJ", "type": "Purchase", "transactionDate": "2026-04-20", "dateRecieved": "2026-05-12", "amount": "$1,001 - $15,000", "assetType": "Stock"},
+
+  {"chamber": "House", "representative": "Solo Trader", "party": "Other", "ticker": "AMD", "type": "Purchase", "transactionDate": "2026-05-01", "disclosureDate": "2026-05-20", "amount": "$1,001 - $15,000", "assetType": "Stock"}
+]

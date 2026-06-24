@@ -1,0 +1,71 @@
+name: Congress mirror (daily)
+
+# Runs every weekday near US market open, mirrors the top-performing member of
+# Congress into your Alpaca PAPER account, and emails a summary.
+#
+# NOTE on timing: GitHub cron is in UTC and may be delayed 5-15 min. 13:35 UTC
+# is ~09:35 ET during US daylight saving (EDT). In winter (EST) market open is
+# 14:30 UTC — adjust the cron, or rely on the in-job market-open check (orders
+# are only submitted when the market is actually open; the email still sends).
+on:
+  schedule:
+    - cron: "35 13 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Compute + email but place no orders"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write   # to commit the seen-disclosures state back to the repo
+
+concurrency:
+  group: congress-mirror
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run daily job
+        env:
+          ALPACA_API_KEY_ID: ${{ secrets.ALPACA_API_KEY_ID }}
+          ALPACA_API_SECRET_KEY: ${{ secrets.ALPACA_API_SECRET_KEY }}
+          ALPACA_BASE_URL: ${{ vars.ALPACA_BASE_URL || 'https://paper-api.alpaca.markets' }}
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+          CONGRESS_PROVIDER: ${{ vars.CONGRESS_PROVIDER || 'fmp' }}
+          CONGRESS_WINDOW_DAYS: ${{ vars.CONGRESS_WINDOW_DAYS || '365' }}
+          CONGRESS_MIN_TRADES: ${{ vars.CONGRESS_MIN_TRADES || '3' }}
+          MIRROR_ALLOCATION: ${{ vars.MIRROR_ALLOCATION || '0.5' }}
+          MIRROR_MAX_POSITIONS: ${{ vars.MIRROR_MAX_POSITIONS }}
+          SMTP_HOST: ${{ vars.SMTP_HOST || 'smtp.gmail.com' }}
+          SMTP_PORT: ${{ vars.SMTP_PORT || '587' }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          EMAIL_FROM: ${{ vars.EMAIL_FROM }}
+          EMAIL_TO: ${{ vars.EMAIL_TO }}
+        run: |
+          python -m scripts.daily_job ${{ inputs.dry_run && '--dry-run' || '' }}
+
+      - name: Persist seen-disclosures state
+        run: |
+          if [ -n "$(git status --porcelain state/)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git add state/
+            git commit -m "chore: update seen-disclosures state [skip ci]"
+            git push
+          else
+            echo "No state changes to commit."
+          fi
