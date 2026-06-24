@@ -1,0 +1,29 @@
+name: Flatten account (close all)
+
+# Manually liquidate every open position on the paper account.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Show positions but don't sell"
+        type: boolean
+        default: false
+
+jobs:
+  flatten:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Close all positions
+        env:
+          ALPACA_API_KEY_ID: ${{ secrets.ALPACA_API_KEY_ID }}
+          ALPACA_API_SECRET_KEY: ${{ secrets.ALPACA_API_SECRET_KEY }}
+          ALPACA_BASE_URL: ${{ vars.ALPACA_BASE_URL || 'https://paper-api.alpaca.markets' }}
+        run: |
+          python -m scripts.close_all ${{ inputs.dry_run && '--dry-run' || '' }}
