@@ -184,7 +184,7 @@ class BasketConfig:
 
 
 def load_basket_config() -> BasketConfig:
-    raw = os.getenv("BASKET_UNIVERSE", DEFAULT_BASKET)
+    raw = os.getenv("BASKET_UNIVERSE", "") or DEFAULT_BASKET
     # Keep crypto slashes; only upper/strip. (Can't reuse _split_symbols — it's
     # fine here since symbols have no lowercase, but do it explicitly.)
     universe = [s.strip().upper() for s in raw.split(",") if s.strip()]
@@ -203,7 +203,7 @@ def load_ai_config() -> AIConfig:
         anthropic_api_key=os.getenv("ANTHROPIC_API_KEY", ""),
         model=os.getenv("AI_MODEL", "claude-sonnet-4-6"),
         max_tokens=int(os.getenv("AI_MAX_TOKENS", "2000")),
-        universe=_split_symbols(os.getenv("AI_UNIVERSE", DEFAULT_UNIVERSE)),
+        universe=_split_symbols(os.getenv("AI_UNIVERSE", "") or DEFAULT_UNIVERSE),
         use_congress=os.getenv("AI_USE_CONGRESS", "true").lower() in ("1", "true", "yes"),
         allocation=float(os.getenv("AI_ALLOCATION", "0.5")),
         max_positions=int(os.getenv("AI_MAX_POSITIONS", "8")),

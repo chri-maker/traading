@@ -72,6 +72,15 @@ def test_skips_dust_when_already_at_target():
     assert [o for o in orders if o.symbol == "AAPL"] == []
 
 
+def test_empty_universe_env_falls_back_to_default(monkeypatch):
+    from traading.config import DEFAULT_BASKET, load_basket_config
+
+    monkeypatch.setenv("BASKET_UNIVERSE", "")  # workflow passes empty when unset
+    cfg = load_basket_config()
+    assert len(cfg.universe) == len(DEFAULT_BASKET.split(","))
+    assert "BTC/USD" in cfg.universe
+
+
 def test_trim_when_overweight():
     weights = {"AAPL": 1.0}
     current = {canon("AAPL"): ("AAPL", 600.0)}  # target 500 -> sell 100
