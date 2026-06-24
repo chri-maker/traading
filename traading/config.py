@@ -191,7 +191,7 @@ def load_basket_config() -> BasketConfig:
     return BasketConfig(
         universe=universe,
         size=int(os.getenv("BASKET_SIZE", "20")),
-        allocation=float(os.getenv("BASKET_ALLOCATION", "0.95")),
+        allocation=float(os.getenv("BASKET_ALLOCATION", "1.8")),
         allow_live=os.getenv("BASKET_ALLOW_LIVE", "false").lower() in ("1", "true", "yes"),
         dry_run=os.getenv("BASKET_DRY_RUN", "false").lower() in ("1", "true", "yes"),
     )
