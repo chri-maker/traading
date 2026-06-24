@@ -24,6 +24,7 @@ def test_canon_matches_crypto_forms():
 
 def test_is_crypto():
     assert is_crypto("BTC/USD") and not is_crypto("AAPL")
+    assert is_crypto("AVAXUSD")  # Alpaca's slashless held-position form
 
 
 def test_equal_weights_caps_and_dedups():
