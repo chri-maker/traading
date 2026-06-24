@@ -4,7 +4,8 @@ name: Diversified basket (daily)
 # PAPER account toward them each weekday. No AI / no external API key needed.
 on:
   schedule:
-    - cron: "35 13 * * 1-5"
+    - cron: "35 13 * * 1-5"     # weekdays ~09:35 ET: full rebalance (stocks + crypto)
+    - cron: "0 0,12 * * 6,0"    # weekends: crypto-only (stock orders auto-skip when market closed)
   workflow_dispatch:
     inputs:
       dry_run:
