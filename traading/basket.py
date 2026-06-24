@@ -21,7 +21,11 @@ def canon(symbol: str) -> str:
 
 
 def is_crypto(symbol: str) -> bool:
-    return "/" in symbol
+    # Targets use the slash form ("BTC/USD"); Alpaca reports held crypto
+    # positions without it ("BTCUSD"). Treat both as crypto so exits aren't
+    # gated behind stock-market hours.
+    s = symbol.upper()
+    return "/" in s or s.endswith("USD")
 
 
 def equal_weights(symbols: list[str], size: int) -> dict[str, float]:
@@ -53,7 +57,7 @@ def compute_basket_orders(
     equity: float,
     current: dict[str, tuple[str, float]],
     allocation: float = 0.95,
-    min_notional: float = 1.0,
+    min_notional: float = 10.0,  # Alpaca rejects crypto orders below $10
 ) -> list[BasketOrder]:
     """Diff target equal-weight basket against current holdings.
 
