@@ -85,6 +85,27 @@ class Broker:
         positions = self.trading.get_all_positions()
         return {p.symbol: float(p.qty) for p in positions}
 
+    def tradable_symbols(self, candidates: list[str]) -> list[str]:
+        """Filter `candidates` to active, tradable US equities on Alpaca.
+
+        On any API error, returns the input unchanged — order submission still
+        rejects bad symbols as a backstop.
+        """
+        try:
+            from alpaca.trading.enums import AssetClass, AssetStatus
+            from alpaca.trading.requests import GetAssetsRequest
+
+            assets = self.trading.get_all_assets(
+                GetAssetsRequest(
+                    status=AssetStatus.ACTIVE, asset_class=AssetClass.US_EQUITY
+                )
+            )
+            ok = {a.symbol for a in assets if a.tradable}
+            return [s for s in candidates if s in ok]
+        except Exception:
+            log.warning("tradable_symbols lookup failed; using candidates as-is", exc_info=True)
+            return candidates
+
     # --- Prices (for performance estimation / mirror sizing) ---------------
     def latest_price(self, symbol: str) -> float | None:
         try:

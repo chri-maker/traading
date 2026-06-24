@@ -136,3 +136,46 @@ def load_congress_config() -> CongressConfig:
         email_from=os.getenv("EMAIL_FROM", os.getenv("SMTP_USER", "")),
         email_to=os.getenv("EMAIL_TO", ""),
     )
+
+
+# Default tradable universe: liquid US large-caps. Override with AI_UNIVERSE.
+DEFAULT_UNIVERSE = (
+    "AAPL,MSFT,NVDA,AMZN,GOOGL,META,TSLA,AVGO,JPM,V,UNH,XOM,JNJ,WMT,PG,MA,"
+    "HD,COST,ABBV,CVX,KO,PEP,BAC,LLY,AMD,NFLX,DIS,INTC,CSCO,CRM,ORCL,QCOM"
+)
+
+
+@dataclass(frozen=True)
+class AIConfig:
+    """Configuration for the AI-driven trading strategy."""
+
+    anthropic_api_key: str
+    model: str
+    max_tokens: int
+    universe: list[str]
+    use_congress: bool
+    allocation: float
+    max_positions: int
+    max_position_weight: float
+    allow_live: bool
+    dry_run: bool
+
+    @property
+    def ai_configured(self) -> bool:
+        return bool(self.anthropic_api_key)
+
+
+def load_ai_config() -> AIConfig:
+    """Build an AIConfig from the environment (Anthropic key optional until used)."""
+    return AIConfig(
+        anthropic_api_key=os.getenv("ANTHROPIC_API_KEY", ""),
+        model=os.getenv("AI_MODEL", "claude-sonnet-4-6"),
+        max_tokens=int(os.getenv("AI_MAX_TOKENS", "2000")),
+        universe=_split_symbols(os.getenv("AI_UNIVERSE", DEFAULT_UNIVERSE)),
+        use_congress=os.getenv("AI_USE_CONGRESS", "true").lower() in ("1", "true", "yes"),
+        allocation=float(os.getenv("AI_ALLOCATION", "0.5")),
+        max_positions=int(os.getenv("AI_MAX_POSITIONS", "8")),
+        max_position_weight=float(os.getenv("AI_MAX_POSITION_PCT", "0.25")),
+        allow_live=os.getenv("AI_ALLOW_LIVE", "false").lower() in ("1", "true", "yes"),
+        dry_run=os.getenv("AI_DRY_RUN", "false").lower() in ("1", "true", "yes"),
+    )

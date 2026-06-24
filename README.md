@@ -229,3 +229,47 @@ Trigger a manual run (with optional dry-run) from the **Actions** tab once
 secrets are set. The cron is `35 13 * * 1-5` (UTC ≈ 09:35 ET in summer); adjust
 for winter EST if you want exact market-open timing — the job already refuses to
 submit orders when the market is closed.
+
+> The scheduled trigger for this congress-mirror workflow is **disabled** when
+> the AI strategy (below) is the active trader — running both would have two
+> bots rebalancing the same account. It stays available to run manually.
+
+---
+
+# AI-driven strategy
+
+A broader strategy where **Claude** chooses the portfolio. Each weekday it reads
+a compact snapshot of a fixed universe of liquid stocks (latest price, 30-day
+return, and recent congressional-trade counts) plus your current account, and
+returns a **long-only** target portfolio that the bot executes on the **paper**
+account.
+
+The model's job is deliberately small and bounded — everything it returns is
+validated and clamped before any order is placed:
+
+- **Universe-restricted** — it may only pick from the allowed list, and every
+  symbol is checked against Alpaca's tradable assets (hallucinated/illiquid
+  tickers are dropped).
+- **Long-only**, capped at `AI_MAX_POSITIONS` names, each ≤ `AI_MAX_POSITION_PCT`.
+- Total deployment can never exceed `AI_ALLOCATION` of equity.
+- **Paper-only** unless `AI_ALLOW_LIVE=true`; market-hours and dry-run guards apply.
+
+It cannot fix the underlying signal — delayed disclosures, 30-day momentum, and
+a generic universe are weak inputs. The AI makes the *selection and explanation*
+smarter, not the data better. **Paper trading. Not financial advice.**
+
+### Try it
+```bash
+python -m scripts.ai_trade --dry-run     # needs ANTHROPIC_API_KEY + Alpaca keys
+```
+
+### Run it on schedule
+[`.github/workflows/ai-strategy.yml`](.github/workflows/ai-strategy.yml) runs it
+each weekday. Add one secret beyond the Alpaca pair:
+
+| Secret | What |
+| ------ | ---- |
+| `ANTHROPIC_API_KEY` | From https://console.anthropic.com/ (costs a few cents/run) |
+
+Tuning knobs are repo **Variables**: `AI_MODEL`, `AI_ALLOCATION`,
+`AI_MAX_POSITIONS`, `AI_MAX_POSITION_PCT`, `AI_UNIVERSE`, `AI_USE_CONGRESS`.

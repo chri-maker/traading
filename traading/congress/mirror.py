@@ -115,6 +115,26 @@ def compute_mirror_orders(
     # Optionally cap any single name's weight (diversification guard).
     weights = cap_weights(weights, max_position_weight)
 
+    return orders_from_weights(
+        weights, prices, equity, current_positions, allocation, exit_unlisted=True
+    )
+
+
+def orders_from_weights(
+    weights: dict[str, float],
+    prices: PriceSource,
+    equity: float,
+    current_positions: dict[str, float],
+    allocation: float = 0.5,
+    exit_unlisted: bool = True,
+) -> list[MirrorOrder]:
+    """Turn target portfolio weights into buy/sell orders vs current holdings.
+
+    Deploys `allocation` of `equity` across `weights` (sized in whole shares at
+    the latest price), then diffs against `current_positions`. When
+    `exit_unlisted` is true, anything held but not in `weights` is fully sold.
+    Shared by the congress mirror and the AI strategy.
+    """
     deployable = max(equity, 0.0) * allocation
     orders: list[MirrorOrder] = []
     targets: dict[str, int] = {}
@@ -127,7 +147,6 @@ def compute_mirror_orders(
         target_dollars = deployable * weight
         targets[symbol] = int(target_dollars // price)
 
-    # Buys / adjustments for target tickers.
     for symbol, target_shares in targets.items():
         current = int(current_positions.get(symbol, 0))
         delta = target_shares - current
@@ -140,13 +159,13 @@ def compute_mirror_orders(
                 MirrorOrder(symbol, "sell", -delta, target_shares, current, "trim")
             )
 
-    # Exit anything held that is no longer in the member's book.
-    for symbol, shares in current_positions.items():
-        shares = int(shares)
-        if shares > 0 and symbol not in targets:
-            orders.append(
-                MirrorOrder(symbol, "sell", shares, 0, shares, "exit (not in book)")
-            )
+    if exit_unlisted:
+        for symbol, shares in current_positions.items():
+            shares = int(shares)
+            if shares > 0 and symbol not in targets:
+                orders.append(
+                    MirrorOrder(symbol, "sell", shares, 0, shares, "exit (not in book)")
+                )
 
     orders.sort(key=lambda o: (o.side != "sell", o.symbol))  # sells first
     return orders
