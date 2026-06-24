@@ -68,7 +68,7 @@ def main() -> None:
         if not alpaca_config.is_paper:
             notes.append("LIVE ACCOUNT: trading real money (MIRROR_ALLOW_LIVE=true).")
 
-    trades = provider.fetch_recent_trades()
+    trades = provider.fetch_recent_trades(pages=cc.fetch_pages)
 
     # --- New-disclosure detection -----------------------------------------
     store = SeenStore()

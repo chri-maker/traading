@@ -130,30 +130,36 @@ class DataProvider(ABC):
 
 
 class FMPProvider(DataProvider):
-    """Financial Modeling Prep congressional-trading endpoints."""
+    """Financial Modeling Prep congressional-trading endpoints (stable API).
 
-    BASE = "https://financialmodelingprep.com/api/v4"
+    The old /api/v4 RSS feeds were retired on 2025-08-31; this uses the current
+    /stable/senate-latest and /stable/house-latest endpoints.
+    """
+
+    BASE = "https://financialmodelingprep.com/stable"
     FEEDS = [
-        ("senate-trading-rss-feed", "Senate"),
-        ("senate-disclosure-rss-feed", "House"),
+        ("senate-latest", "Senate"),
+        ("house-latest", "House"),
     ]
 
-    def __init__(self, api_key: str, timeout: int = 20):
+    def __init__(self, api_key: str, timeout: int = 20, limit: int = 100):
         if not api_key:
             raise ValueError("FMP API key is required (set FMP_API_KEY).")
         self.api_key = api_key
         self.timeout = timeout
+        self.limit = limit
 
     def _get(self, feed: str, page: int) -> list[dict]:
         url = f"{self.BASE}/{feed}"
         resp = requests.get(
             url,
-            params={"page": page, "apikey": self.api_key},
+            params={"page": page, "limit": self.limit, "apikey": self.api_key},
             timeout=self.timeout,
         )
         if resp.status_code != 200:
             # Surface FMP's actual message: distinguishes a bad key ("Invalid
-            # API KEY") from a plan limit ("Exclusive Endpoint ... premium").
+            # API KEY") from a plan limit ("Exclusive Endpoint ... premium")
+            # or a retired path ("Legacy Endpoint").
             body = resp.text[:300]
             raise RuntimeError(f"HTTP {resp.status_code} from FMP {feed}: {body}")
         data = resp.json()

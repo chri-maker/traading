@@ -42,7 +42,7 @@ def main() -> None:
         provider = build_provider(cc.provider, cc.fmp_api_key)
         prices = Broker(load_config())
 
-    trades = provider.fetch_recent_trades()
+    trades = provider.fetch_recent_trades(pages=cc.fetch_pages)
     ranking = rank_members(
         trades, prices, today,
         window_days=cc.window_days, min_trades=cc.min_trades,
