@@ -89,6 +89,43 @@ def test_normalize_skips_missing_ticker():
     assert normalize_record({"type": "Purchase", "transactionDate": "2026-01-01"}, "House") is None
 
 
+def test_normalize_stockwatcher_house_shape():
+    # House Stock Watcher uses snake_case + "Hon. " prefix + lowercase type.
+    rec = {
+        "transaction_date": "2026-01-15",
+        "disclosure_date": "02/10/2026",
+        "ticker": "NVDA",
+        "type": "purchase",
+        "amount": "$1,001 - $15,000",
+        "representative": "Hon. Nancy Pelosi",
+    }
+    t = normalize_record(rec, "House")
+    assert t.politician == "Nancy Pelosi"  # "Hon. " stripped
+    assert t.tx_type == "buy"
+    assert t.ticker == "NVDA"
+
+
+def test_normalize_stockwatcher_senate_shape():
+    rec = {
+        "transaction_date": "01/22/2026",
+        "disclosure_date": "02/15/2026",
+        "ticker": "MSFT",
+        "asset_type": "Stock",
+        "type": "Sale (Full)",
+        "amount": "$15,001 - $50,000",
+        "senator": "Tommy Tuberville",
+    }
+    t = normalize_record(rec, "Senate")
+    assert t.politician == "Tommy Tuberville"
+    assert t.tx_type == "sell"
+
+
+def test_normalize_rejects_junk_tickers():
+    for junk in ("--", "N/A", "", "  "):
+        rec = {"ticker": junk, "type": "purchase", "transaction_date": "2026-01-01"}
+        assert normalize_record(rec, "House") is None
+
+
 # --- provider -------------------------------------------------------------
 def test_sample_provider_loads_fixture():
     trades = SampleProvider().fetch_recent_trades()

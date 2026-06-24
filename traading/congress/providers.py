@@ -22,6 +22,8 @@ from .models import Trade
 log = logging.getLogger(__name__)
 
 _AMOUNT_RE = re.compile(r"\$?\s*([\d,]+(?:\.\d+)?)")
+_TICKER_RE = re.compile(r"^[A-Z][A-Z0-9.\-]{0,9}$")
+_JUNK_TICKERS = {"--", "N/A", "NA", "NONE", "--.", "."}
 
 
 def parse_amount_range(text: str | None) -> tuple[float, float]:
@@ -73,8 +75,9 @@ def normalize_record(record: dict, chamber: str) -> Trade | None:
     several variants of each field defensively.
     """
     ticker = (record.get("symbol") or record.get("ticker") or "").strip().upper()
-    if not ticker:
-        return None  # options/bonds/funds without a clean ticker: skip
+    # Skip rows without a clean equity ticker (options, bonds, funds, "--").
+    if not ticker or ticker in _JUNK_TICKERS or not _TICKER_RE.match(ticker):
+        return None
 
     name = (
         record.get("representative")
@@ -85,6 +88,10 @@ def normalize_record(record: dict, chamber: str) -> Trade | None:
         or record.get("office")
         or "Unknown"
     )
+    # Stock Watcher prefixes House names with "Hon. " — drop it for consistency.
+    name = str(name).strip()
+    if name.startswith("Hon. "):
+        name = name[5:].strip()
 
     tx_date = _parse_date(
         record.get("transactionDate") or record.get("transaction_date")
@@ -112,7 +119,7 @@ def normalize_record(record: dict, chamber: str) -> Trade | None:
         disclosed_date=disclosed,
         amount_low=low,
         amount_high=high,
-        asset_type=(record.get("assetType") or "stock").strip() or "stock",
+        asset_type=(record.get("assetType") or record.get("asset_type") or "stock").strip() or "stock",
     )
 
 
@@ -168,6 +175,61 @@ class FMPProvider(DataProvider):
         return trades
 
 
+class StockWatcherProvider(DataProvider):
+    """Free, no-API-key congressional data from the House/Senate Stock Watcher
+    public datasets (https://github.com/timothycarambat). Tries S3 first, then
+    the GitHub raw mirror, per chamber.
+    """
+
+    SOURCES = [
+        (
+            "House",
+            [
+                "https://house-stock-watcher-data.s3-us-west-2.amazonaws.com/data/all_transactions.json",
+                "https://raw.githubusercontent.com/timothycarambat/house-stock-watcher-data/master/data/all_transactions.json",
+            ],
+        ),
+        (
+            "Senate",
+            [
+                "https://senate-stock-watcher-data.s3-us-west-2.amazonaws.com/aggregate/all_transactions.json",
+                "https://raw.githubusercontent.com/timothycarambat/senate-stock-watcher-data/master/aggregate/all_transactions.json",
+            ],
+        ),
+    ]
+
+    def __init__(self, timeout: int = 60):
+        self.timeout = timeout
+
+    def _fetch_json(self, urls: list[str]) -> list[dict]:
+        last_exc: Exception | None = None
+        for url in urls:
+            try:
+                resp = requests.get(url, timeout=self.timeout)
+                resp.raise_for_status()
+                data = resp.json()
+                if isinstance(data, list):
+                    return data
+            except Exception as exc:  # try the next mirror
+                last_exc = exc
+                log.warning("Stock Watcher fetch failed for %s: %s", url, exc)
+        if last_exc:
+            log.error("All Stock Watcher mirrors failed: %s", last_exc)
+        return []
+
+    def fetch_recent_trades(self, pages: int = 3) -> list[Trade]:
+        trades: list[Trade] = []
+        for chamber, urls in self.SOURCES:
+            records = self._fetch_json(urls)
+            for rec in records:
+                trade = normalize_record(rec, chamber)
+                if trade is not None:
+                    trades.append(trade)
+        trades.sort(key=lambda t: t.disclosed_date, reverse=True)
+        log.info("Fetched %d congressional trades from Stock Watcher", len(trades))
+        return trades
+
+
 class SampleProvider(DataProvider):
     """Loads bundled fixture data — no network or API key needed."""
 
@@ -188,9 +250,13 @@ class SampleProvider(DataProvider):
 
 
 def build_provider(name: str, api_key: str = "") -> DataProvider:
-    name = (name or "fmp").lower()
+    name = (name or "stockwatcher").lower()
     if name == "sample":
         return SampleProvider()
+    if name in ("stockwatcher", "stock-watcher", "free"):
+        return StockWatcherProvider()
     if name == "fmp":
         return FMPProvider(api_key)
-    raise ValueError(f"Unknown data provider: {name!r} (use 'fmp' or 'sample').")
+    raise ValueError(
+        f"Unknown data provider: {name!r} (use 'stockwatcher', 'fmp', or 'sample')."
+    )
