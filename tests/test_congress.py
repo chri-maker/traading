@@ -8,7 +8,10 @@ from traading.congress.mirror import (
 )
 from traading.congress.performance import estimate_member_return, rank_members
 from traading.congress.providers import (
+    FMPProvider,
     SampleProvider,
+    StockWatcherProvider,
+    build_provider,
     normalize_record,
     parse_amount_range,
 )
@@ -127,6 +130,12 @@ def test_normalize_rejects_junk_tickers():
 
 
 # --- provider -------------------------------------------------------------
+def test_build_provider_auto_selects_by_key():
+    # No key -> free archive; key present -> FMP (current data).
+    assert isinstance(build_provider("auto", ""), StockWatcherProvider)
+    assert isinstance(build_provider("auto", "somekey"), FMPProvider)
+
+
 def test_sample_provider_loads_fixture():
     trades = SampleProvider().fetch_recent_trades()
     assert len(trades) >= 10

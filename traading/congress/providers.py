@@ -151,8 +151,14 @@ class FMPProvider(DataProvider):
             params={"page": page, "apikey": self.api_key},
             timeout=self.timeout,
         )
-        resp.raise_for_status()
+        if resp.status_code != 200:
+            # Surface FMP's actual message: distinguishes a bad key ("Invalid
+            # API KEY") from a plan limit ("Exclusive Endpoint ... premium").
+            body = resp.text[:300]
+            raise RuntimeError(f"HTTP {resp.status_code} from FMP {feed}: {body}")
         data = resp.json()
+        if isinstance(data, dict) and data.get("Error Message"):
+            raise RuntimeError(f"FMP error on {feed}: {data['Error Message']}")
         return data if isinstance(data, list) else []
 
     def fetch_recent_trades(self, pages: int = 3) -> list[Trade]:
@@ -250,7 +256,11 @@ class SampleProvider(DataProvider):
 
 
 def build_provider(name: str, api_key: str = "") -> DataProvider:
-    name = (name or "stockwatcher").lower()
+    name = (name or "auto").lower()
+    if name == "auto":
+        # Use FMP (current data) when a key is present; otherwise the free
+        # Stock Watcher archive.
+        name = "fmp" if api_key else "stockwatcher"
     if name == "sample":
         return SampleProvider()
     if name in ("stockwatcher", "stock-watcher", "free"):
@@ -258,5 +268,5 @@ def build_provider(name: str, api_key: str = "") -> DataProvider:
     if name == "fmp":
         return FMPProvider(api_key)
     raise ValueError(
-        f"Unknown data provider: {name!r} (use 'stockwatcher', 'fmp', or 'sample')."
+        f"Unknown data provider: {name!r} (use 'auto', 'stockwatcher', 'fmp', or 'sample')."
     )
