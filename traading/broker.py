@@ -106,6 +106,12 @@ class Broker:
             log.warning("tradable_symbols lookup failed; using candidates as-is", exc_info=True)
             return candidates
 
+    def close_all_positions(self, cancel_orders: bool = True) -> list:
+        """Liquidate every open position (market orders) and cancel open orders."""
+        result = self.trading.close_all_positions(cancel_orders=cancel_orders)
+        log.info("Submitted close-all for all positions")
+        return result
+
     # --- Prices (for performance estimation / mirror sizing) ---------------
     def latest_price(self, symbol: str) -> float | None:
         try:
