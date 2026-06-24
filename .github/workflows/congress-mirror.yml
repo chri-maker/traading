@@ -43,7 +43,7 @@ jobs:
           ALPACA_API_KEY_ID: ${{ secrets.ALPACA_API_KEY_ID }}
           ALPACA_API_SECRET_KEY: ${{ secrets.ALPACA_API_SECRET_KEY }}
           ALPACA_BASE_URL: ${{ vars.ALPACA_BASE_URL || 'https://paper-api.alpaca.markets' }}
-          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY1 || secrets.FMP_API_KEY }}
           CONGRESS_PROVIDER: ${{ vars.CONGRESS_PROVIDER || 'auto' }}
           CONGRESS_WINDOW_DAYS: ${{ vars.CONGRESS_WINDOW_DAYS || '365' }}
           CONGRESS_MIN_TRADES: ${{ vars.CONGRESS_MIN_TRADES || '3' }}
