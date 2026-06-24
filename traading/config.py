@@ -165,6 +165,38 @@ class AIConfig:
         return bool(self.anthropic_api_key)
 
 
+# Default diversified basket: ~18 liquid stocks across sectors + 2 majors crypto.
+DEFAULT_BASKET = (
+    "AAPL,MSFT,NVDA,AMZN,GOOGL,META,AVGO,JPM,V,UNH,XOM,JNJ,WMT,PG,HD,COST,KO,DIS,"
+    "BTC/USD,ETH/USD"
+)
+
+
+@dataclass(frozen=True)
+class BasketConfig:
+    """Configuration for the rules-based diversified basket strategy."""
+
+    universe: list[str]
+    size: int
+    allocation: float
+    allow_live: bool
+    dry_run: bool
+
+
+def load_basket_config() -> BasketConfig:
+    raw = os.getenv("BASKET_UNIVERSE", DEFAULT_BASKET)
+    # Keep crypto slashes; only upper/strip. (Can't reuse _split_symbols — it's
+    # fine here since symbols have no lowercase, but do it explicitly.)
+    universe = [s.strip().upper() for s in raw.split(",") if s.strip()]
+    return BasketConfig(
+        universe=universe,
+        size=int(os.getenv("BASKET_SIZE", "20")),
+        allocation=float(os.getenv("BASKET_ALLOCATION", "0.95")),
+        allow_live=os.getenv("BASKET_ALLOW_LIVE", "false").lower() in ("1", "true", "yes"),
+        dry_run=os.getenv("BASKET_DRY_RUN", "false").lower() in ("1", "true", "yes"),
+    )
+
+
 def load_ai_config() -> AIConfig:
     """Build an AIConfig from the environment (Anthropic key optional until used)."""
     return AIConfig(

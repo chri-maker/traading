@@ -1,0 +1,45 @@
+name: Diversified basket (daily)
+
+# Rules-based: hold ~20 equal-weight stock + crypto positions and rebalance the
+# PAPER account toward them each weekday. No AI / no external API key needed.
+on:
+  schedule:
+    - cron: "35 13 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Compute + email but place no orders"
+        type: boolean
+        default: false
+
+concurrency:
+  group: basket
+  cancel-in-progress: false
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run basket strategy
+        env:
+          ALPACA_API_KEY_ID: ${{ secrets.ALPACA_API_KEY_ID }}
+          ALPACA_API_SECRET_KEY: ${{ secrets.ALPACA_API_SECRET_KEY }}
+          ALPACA_BASE_URL: ${{ vars.ALPACA_BASE_URL || 'https://paper-api.alpaca.markets' }}
+          BASKET_UNIVERSE: ${{ vars.BASKET_UNIVERSE }}
+          BASKET_SIZE: ${{ vars.BASKET_SIZE || '20' }}
+          BASKET_ALLOCATION: ${{ vars.BASKET_ALLOCATION || '0.95' }}
+          SMTP_HOST: ${{ vars.SMTP_HOST || 'smtp.gmail.com' }}
+          SMTP_PORT: ${{ vars.SMTP_PORT || '587' }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          EMAIL_FROM: ${{ vars.EMAIL_FROM }}
+          EMAIL_TO: ${{ vars.EMAIL_TO }}
+        run: |
+          python -m scripts.basket_trade ${{ inputs.dry_run && '--dry-run' || '' }}

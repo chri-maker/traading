@@ -112,8 +112,14 @@ class Broker:
         log.info("Submitted close-all for all positions")
         return result
 
+    @staticmethod
+    def is_crypto(symbol: str) -> bool:
+        return "/" in symbol
+
     # --- Prices (for performance estimation / mirror sizing) ---------------
     def latest_price(self, symbol: str) -> float | None:
+        if self.is_crypto(symbol):
+            return self._crypto_price(symbol)
         try:
             request = StockLatestTradeRequest(symbol_or_symbols=symbol)
             result = self.data.get_stock_latest_trade(request)
@@ -121,6 +127,26 @@ class Broker:
             return float(trade.price) if trade else None
         except Exception:
             log.warning("latest_price failed for %s", symbol, exc_info=True)
+            return None
+
+    def _crypto_price(self, symbol: str) -> float | None:
+        try:
+            from alpaca.data.historical import CryptoHistoricalDataClient
+            from alpaca.data.requests import CryptoLatestQuoteRequest
+
+            if not hasattr(self, "_crypto_data"):
+                self._crypto_data = CryptoHistoricalDataClient(
+                    self.config.api_key_id, self.config.api_secret_key
+                )
+            req = CryptoLatestQuoteRequest(symbol_or_symbols=symbol)
+            quotes = self._crypto_data.get_crypto_latest_quote(req)
+            q = quotes.get(symbol)
+            if not q:
+                return None
+            price = float(q.ask_price or q.bid_price or 0)
+            return price or None
+        except Exception:
+            log.warning("crypto price failed for %s", symbol, exc_info=True)
             return None
 
     def price_on(self, symbol: str, day: "date") -> float | None:
@@ -162,11 +188,13 @@ class Broker:
 
     # --- Orders ------------------------------------------------------------
     def submit_market_order(self, symbol: str, qty: float, side: OrderSide):
+        # Crypto requires GTC and supports fractional quantities; equities DAY.
+        tif = TimeInForce.GTC if self.is_crypto(symbol) else TimeInForce.DAY
         order = MarketOrderRequest(
             symbol=symbol,
             qty=qty,
             side=side,
-            time_in_force=TimeInForce.DAY,
+            time_in_force=tif,
         )
         log.info("Submitting %s order: %s x %s", side.value, qty, symbol)
         return self.trading.submit_order(order)

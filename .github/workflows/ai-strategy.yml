@@ -6,9 +6,10 @@ name: AI strategy (daily)
 #
 # Requires secret ANTHROPIC_API_KEY (plus the Alpaca secrets). FMP key is
 # optional — only used to add congressional-trade signals to the prompt.
+# NOTE: scheduled trigger disabled — needs a paid ANTHROPIC_API_KEY. The free
+# diversified basket (basket.yml) is the active scheduled trader. Run this
+# manually once you've added the key.
 on:
-  schedule:
-    - cron: "40 13 * * 1-5"
   workflow_dispatch:
     inputs:
       dry_run:
