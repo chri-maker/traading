@@ -17,6 +17,10 @@ on:
         description: "Compute + email but place no orders"
         type: boolean
         default: false
+      allocation:
+        description: "Fraction of equity to deploy (e.g. 1.0 = 100%). Blank = default."
+        type: string
+        default: ""
 
 permissions:
   contents: write   # to commit the seen-disclosures state back to the repo
@@ -48,7 +52,7 @@ jobs:
           CONGRESS_PROVIDER: ${{ vars.CONGRESS_PROVIDER || 'auto' }}
           CONGRESS_WINDOW_DAYS: ${{ vars.CONGRESS_WINDOW_DAYS || '365' }}
           CONGRESS_MIN_TRADES: ${{ vars.CONGRESS_MIN_TRADES || '3' }}
-          MIRROR_ALLOCATION: ${{ vars.MIRROR_ALLOCATION || '0.5' }}
+          MIRROR_ALLOCATION: ${{ inputs.allocation || vars.MIRROR_ALLOCATION || '0.5' }}
           MIRROR_MAX_POSITIONS: ${{ vars.MIRROR_MAX_POSITIONS }}
           SMTP_HOST: ${{ vars.SMTP_HOST || 'smtp.gmail.com' }}
           SMTP_PORT: ${{ vars.SMTP_PORT || '587' }}
