@@ -7,10 +7,13 @@ directly, which keeps them easy to test and the SDK easy to swap/upgrade.
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timedelta, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from alpaca.data.historical import StockHistoricalDataClient
-from alpaca.data.requests import StockBarsRequest
+from alpaca.data.requests import (
+    StockBarsRequest,
+    StockLatestTradeRequest,
+)
 from alpaca.data.timeframe import TimeFrame, TimeFrameUnit
 from alpaca.trading.client import TradingClient
 from alpaca.trading.enums import OrderSide, TimeInForce
@@ -76,6 +79,43 @@ class Broker:
 
     def is_long(self, symbol: str) -> bool:
         return self.get_position_qty(symbol) > 0
+
+    def get_all_positions(self) -> dict[str, float]:
+        """Map of symbol -> held quantity for every open position."""
+        positions = self.trading.get_all_positions()
+        return {p.symbol: float(p.qty) for p in positions}
+
+    # --- Prices (for performance estimation / mirror sizing) ---------------
+    def latest_price(self, symbol: str) -> float | None:
+        try:
+            request = StockLatestTradeRequest(symbol_or_symbols=symbol)
+            result = self.data.get_stock_latest_trade(request)
+            trade = result.get(symbol)
+            return float(trade.price) if trade else None
+        except Exception:
+            log.warning("latest_price failed for %s", symbol, exc_info=True)
+            return None
+
+    def price_on(self, symbol: str, day: "date") -> float | None:
+        """Closing price on `day`, or the most recent close before it."""
+        from datetime import datetime as _dt
+        from datetime import time as _time
+
+        try:
+            start = _dt.combine(day - timedelta(days=7), _time.min, tzinfo=timezone.utc)
+            end = _dt.combine(day, _time.max, tzinfo=timezone.utc)
+            request = StockBarsRequest(
+                symbol_or_symbols=symbol,
+                timeframe=TimeFrame(1, TimeFrameUnit.Day),
+                start=start,
+                end=end,
+            )
+            bars = self.data.get_stock_bars(request)
+            symbol_bars = bars.data.get(symbol, [])
+            return float(symbol_bars[-1].close) if symbol_bars else None
+        except Exception:
+            log.warning("price_on failed for %s @ %s", symbol, day, exc_info=True)
+            return None
 
     # --- Market data -------------------------------------------------------
     def recent_closes(self, symbol: str, limit: int) -> list[float]:

@@ -1,0 +1,45 @@
+name: Test Alpaca connection
+
+# Manual, on-demand check that your Alpaca paper credentials work — run this
+# FIRST, before relying on the scheduled mirror job. Actions → "Test Alpaca
+# connection" → Run workflow.
+on:
+  workflow_dispatch:
+    inputs:
+      full_dryrun:
+        description: "Also run the congress-mirror job in dry-run (needs FMP_API_KEY)"
+        type: boolean
+        default: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Verify Alpaca connection
+        env:
+          ALPACA_API_KEY_ID: ${{ secrets.ALPACA_API_KEY_ID }}
+          ALPACA_API_SECRET_KEY: ${{ secrets.ALPACA_API_SECRET_KEY }}
+          ALPACA_BASE_URL: ${{ vars.ALPACA_BASE_URL || 'https://paper-api.alpaca.markets' }}
+        run: python -m scripts.check_account
+
+      - name: Congress-mirror dry-run (optional)
+        if: ${{ inputs.full_dryrun }}
+        env:
+          ALPACA_API_KEY_ID: ${{ secrets.ALPACA_API_KEY_ID }}
+          ALPACA_API_SECRET_KEY: ${{ secrets.ALPACA_API_SECRET_KEY }}
+          ALPACA_BASE_URL: ${{ vars.ALPACA_BASE_URL || 'https://paper-api.alpaca.markets' }}
+          FMP_API_KEY: ${{ secrets.FMP_API_KEY }}
+          CONGRESS_PROVIDER: ${{ vars.CONGRESS_PROVIDER || 'fmp' }}
+          MIRROR_ALLOCATION: ${{ vars.MIRROR_ALLOCATION || '0.5' }}
+          MIRROR_MAX_POSITION_PCT: ${{ vars.MIRROR_MAX_POSITION_PCT }}
+        run: python -m scripts.daily_job --dry-run

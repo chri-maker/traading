@@ -76,3 +76,61 @@ def load_config() -> Config:
         position_size=float(_get("POSITION_SIZE", "0.1")),
         poll_interval=int(_get("POLL_INTERVAL", "60")),
     )
+
+
+def _opt(name: str) -> int | None:
+    value = os.getenv(name)
+    return int(value) if value not in (None, "") else None
+
+
+def _optf(name: str) -> float | None:
+    value = os.getenv(name)
+    return float(value) if value not in (None, "") else None
+
+
+@dataclass(frozen=True)
+class CongressConfig:
+    """Configuration for the congressional-trade mirroring bot."""
+
+    provider: str
+    fmp_api_key: str
+    window_days: int
+    min_trades: int
+    mirror_allocation: float
+    max_positions: int | None
+    max_position_weight: float | None
+    allow_live: bool
+    dry_run: bool
+
+    # Email (SMTP)
+    smtp_host: str
+    smtp_port: int
+    smtp_user: str
+    smtp_pass: str
+    email_from: str
+    email_to: str
+
+    @property
+    def email_configured(self) -> bool:
+        return bool(self.smtp_host and self.smtp_user and self.email_to)
+
+
+def load_congress_config() -> CongressConfig:
+    """Build a CongressConfig from the environment (secrets optional until used)."""
+    return CongressConfig(
+        provider=os.getenv("CONGRESS_PROVIDER", "fmp"),
+        fmp_api_key=os.getenv("FMP_API_KEY", ""),
+        window_days=int(os.getenv("CONGRESS_WINDOW_DAYS", "365")),
+        min_trades=int(os.getenv("CONGRESS_MIN_TRADES", "3")),
+        mirror_allocation=float(os.getenv("MIRROR_ALLOCATION", "0.5")),
+        max_positions=_opt("MIRROR_MAX_POSITIONS"),
+        max_position_weight=_optf("MIRROR_MAX_POSITION_PCT"),
+        allow_live=os.getenv("MIRROR_ALLOW_LIVE", "false").lower() in ("1", "true", "yes"),
+        dry_run=os.getenv("MIRROR_DRY_RUN", "false").lower() in ("1", "true", "yes"),
+        smtp_host=os.getenv("SMTP_HOST", "smtp.gmail.com"),
+        smtp_port=int(os.getenv("SMTP_PORT", "587")),
+        smtp_user=os.getenv("SMTP_USER", ""),
+        smtp_pass=os.getenv("SMTP_PASS", ""),
+        email_from=os.getenv("EMAIL_FROM", os.getenv("SMTP_USER", "")),
+        email_to=os.getenv("EMAIL_TO", ""),
+    )
