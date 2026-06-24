@@ -94,6 +94,7 @@ class CongressConfig:
 
     provider: str
     fmp_api_key: str
+    fetch_pages: int
     window_days: int
     min_trades: int
     mirror_allocation: float
@@ -120,6 +121,7 @@ def load_congress_config() -> CongressConfig:
     return CongressConfig(
         provider=os.getenv("CONGRESS_PROVIDER", "auto"),
         fmp_api_key=os.getenv("FMP_API_KEY", ""),
+        fetch_pages=int(os.getenv("CONGRESS_FETCH_PAGES", "30")),
         window_days=int(os.getenv("CONGRESS_WINDOW_DAYS", "365")),
         min_trades=int(os.getenv("CONGRESS_MIN_TRADES", "3")),
         mirror_allocation=float(os.getenv("MIRROR_ALLOCATION", "0.5")),
