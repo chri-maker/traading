@@ -165,10 +165,20 @@ class AIConfig:
         return bool(self.anthropic_api_key)
 
 
-# Default diversified basket: ~18 liquid stocks across sectors + 2 majors crypto.
+# Default diversified basket: ~32 liquid stocks across sectors + 8 cryptos.
 DEFAULT_BASKET = (
-    "AAPL,MSFT,NVDA,AMZN,GOOGL,META,AVGO,JPM,V,UNH,XOM,JNJ,WMT,PG,HD,COST,KO,DIS,"
-    "BTC/USD,ETH/USD"
+    # tech / semis
+    "AAPL,MSFT,NVDA,AMZN,GOOGL,META,AVGO,AMD,ORCL,CRM,ADBE,QCOM,CSCO,"
+    # financials
+    "JPM,V,MA,BAC,GS,"
+    # healthcare
+    "UNH,JNJ,LLY,ABBV,MRK,"
+    # consumer
+    "WMT,PG,KO,PEP,COST,HD,MCD,"
+    # energy
+    "XOM,CVX,"
+    # crypto
+    "BTC/USD,ETH/USD,SOL/USD,AVAX/USD,LINK/USD,DOGE/USD,LTC/USD,BCH/USD"
 )
 
 
@@ -190,7 +200,7 @@ def load_basket_config() -> BasketConfig:
     universe = [s.strip().upper() for s in raw.split(",") if s.strip()]
     return BasketConfig(
         universe=universe,
-        size=int(os.getenv("BASKET_SIZE", "20")),
+        size=int(os.getenv("BASKET_SIZE", "40")),
         allocation=float(os.getenv("BASKET_ALLOCATION", "1.8")),
         allow_live=os.getenv("BASKET_ALLOW_LIVE", "false").lower() in ("1", "true", "yes"),
         dry_run=os.getenv("BASKET_DRY_RUN", "false").lower() in ("1", "true", "yes"),
