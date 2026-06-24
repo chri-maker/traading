@@ -210,7 +210,20 @@ Add these in **repo Settings → Secrets and variables → Actions**:
 | `EMAIL_FROM` | `SMTP_USER` |
 | `MIRROR_ALLOCATION` | `0.5` |
 | `MIRROR_MAX_POSITIONS` | (none) |
+| `MIRROR_MAX_POSITION_PCT` | (none) — e.g. `0.34` caps any name at 34% |
 | `ALPACA_BASE_URL` | `https://paper-api.alpaca.markets` |
+
+### Safety guards
+
+- **Paper-only by default.** The job refuses to submit orders against a
+  non-paper account unless you explicitly set `MIRROR_ALLOW_LIVE=true`.
+- **Market-hours check.** Orders are only submitted when the market is open;
+  the summary email still sends regardless.
+- **Per-name cap.** `MIRROR_MAX_POSITION_PCT` clips any single position's share
+  of the mirror (excess is redistributed), so one large disclosed buy can't
+  dominate the account.
+- **Dry-run.** `--dry-run` (or `MIRROR_DRY_RUN=true`) computes and emails
+  without trading.
 
 Trigger a manual run (with optional dry-run) from the **Actions** tab once
 secrets are set. The cron is `35 13 * * 1-5` (UTC ≈ 09:35 ET in summer); adjust

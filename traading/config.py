@@ -83,6 +83,11 @@ def _opt(name: str) -> int | None:
     return int(value) if value not in (None, "") else None
 
 
+def _optf(name: str) -> float | None:
+    value = os.getenv(name)
+    return float(value) if value not in (None, "") else None
+
+
 @dataclass(frozen=True)
 class CongressConfig:
     """Configuration for the congressional-trade mirroring bot."""
@@ -93,6 +98,8 @@ class CongressConfig:
     min_trades: int
     mirror_allocation: float
     max_positions: int | None
+    max_position_weight: float | None
+    allow_live: bool
     dry_run: bool
 
     # Email (SMTP)
@@ -117,6 +124,8 @@ def load_congress_config() -> CongressConfig:
         min_trades=int(os.getenv("CONGRESS_MIN_TRADES", "3")),
         mirror_allocation=float(os.getenv("MIRROR_ALLOCATION", "0.5")),
         max_positions=_opt("MIRROR_MAX_POSITIONS"),
+        max_position_weight=_optf("MIRROR_MAX_POSITION_PCT"),
+        allow_live=os.getenv("MIRROR_ALLOW_LIVE", "false").lower() in ("1", "true", "yes"),
         dry_run=os.getenv("MIRROR_DRY_RUN", "false").lower() in ("1", "true", "yes"),
         smtp_host=os.getenv("SMTP_HOST", "smtp.gmail.com"),
         smtp_port=int(os.getenv("SMTP_PORT", "587")),

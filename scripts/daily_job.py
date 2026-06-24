@@ -55,9 +55,18 @@ def main() -> None:
         broker = None
         notes.append("SAMPLE MODE: fixtures + fake prices, no real account.")
     else:
-        broker = Broker(load_config())
+        alpaca_config = load_config()
+        # Safety guard: never fire live-money orders unless explicitly allowed.
+        if not alpaca_config.is_paper and not cc.allow_live:
+            raise SystemExit(
+                "Refusing to run against a non-paper account "
+                f"({alpaca_config.base_url}). Set MIRROR_ALLOW_LIVE=true to override."
+            )
+        broker = Broker(alpaca_config)
         provider = build_provider(cc.provider, cc.fmp_api_key)
         prices = broker
+        if not alpaca_config.is_paper:
+            notes.append("LIVE ACCOUNT: trading real money (MIRROR_ALLOW_LIVE=true).")
 
     trades = provider.fetch_recent_trades()
 
@@ -97,6 +106,7 @@ def main() -> None:
             member_trades, prices, equity, current, today,
             window_days=cc.window_days, allocation=cc.mirror_allocation,
             max_positions=cc.max_positions,
+            max_position_weight=cc.max_position_weight,
         )
 
         if dry_run:

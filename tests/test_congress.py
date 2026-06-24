@@ -1,6 +1,7 @@
 from datetime import date
 
 from traading.congress.mirror import (
+    cap_weights,
     compute_mirror_orders,
     net_positions,
     target_weights,
@@ -133,6 +134,31 @@ def test_target_weights_sum_to_one():
     weights = target_weights({"A": 30.0, "B": 10.0})
     assert abs(sum(weights.values()) - 1.0) < 1e-9
     assert weights["A"] > weights["B"]
+
+
+def test_cap_weights_clips_and_renormalizes():
+    capped = cap_weights({"A": 0.9, "B": 0.05, "C": 0.05}, cap=0.4)
+    assert capped["A"] <= 0.4 + 1e-9
+    assert abs(sum(capped.values()) - 1.0) < 1e-9
+    assert capped["B"] > 0.05  # excess redistributed to the small names
+
+
+def test_cap_weights_noop_when_none():
+    w = {"A": 0.9, "B": 0.1}
+    assert cap_weights(w, None) == w
+
+
+def test_compute_mirror_orders_respects_weight_cap():
+    trades = SampleProvider().fetch_recent_trades()
+    pelosi = [t for t in trades if t.politician == "Nancy Pelosi"]
+    # Pelosi's NVDA buy is huge; without a cap it dominates. Cap it at 40%.
+    orders = compute_mirror_orders(
+        pelosi, FlatPrices(), equity=100_000.0, current_positions={},
+        today=TODAY, allocation=1.0, max_position_weight=0.4,
+    )
+    by_symbol = {o.symbol: o.qty * 100.0 for o in orders}  # $100 flat price
+    nvda_dollars = by_symbol.get("NVDA", 0)
+    assert nvda_dollars <= 100_000.0 * 0.4 + 100  # within cap (+1 share rounding)
 
 
 def test_compute_mirror_orders_buys_when_flat():

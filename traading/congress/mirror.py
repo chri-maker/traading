@@ -60,6 +60,30 @@ def target_weights(net: dict[str, float]) -> dict[str, float]:
     return {sym: amt / total for sym, amt in net.items()}
 
 
+def cap_weights(weights: dict[str, float], cap: float | None) -> dict[str, float]:
+    """Clip any single weight to `cap`, redistributing the excess proportionally.
+
+    Prevents one huge disclosed buy from dominating the account. `cap` is a
+    fraction in (0, 1]; None or >=1 means no cap.
+    """
+    if not cap or cap >= 1.0 or not weights:
+        return weights
+    w = dict(weights)
+    for _ in range(20):
+        over = {k: v for k, v in w.items() if v > cap + 1e-9}
+        if not over:
+            break
+        capped = {k: cap for k in over}
+        remaining = max(0.0, 1.0 - cap * len(over))
+        under = {k: v for k, v in w.items() if k not in over}
+        under_total = sum(under.values())
+        if under_total <= 0:
+            w = capped
+            break
+        w = {**capped, **{k: v / under_total * remaining for k, v in under.items()}}
+    return w
+
+
 def compute_mirror_orders(
     member_trades: list[Trade],
     prices: PriceSource,
@@ -69,10 +93,12 @@ def compute_mirror_orders(
     window_days: int = 365,
     allocation: float = 0.5,
     max_positions: int | None = None,
+    max_position_weight: float | None = None,
 ) -> list[MirrorOrder]:
     """Compute the orders needed to mirror a member's implied long book.
 
     `allocation` is the fraction of `equity` to deploy across the mirror.
+    `max_position_weight` caps any single name's share of the mirror.
     `current_positions` maps symbol -> shares currently held.
     """
     net = net_positions(member_trades, today, window_days)
@@ -85,6 +111,9 @@ def compute_mirror_orders(
         top = sorted(weights.items(), key=lambda kv: kv[1], reverse=True)[:max_positions]
         total = sum(w for _, w in top) or 1.0
         weights = {sym: w / total for sym, w in top}
+
+    # Optionally cap any single name's weight (diversification guard).
+    weights = cap_weights(weights, max_position_weight)
 
     deployable = max(equity, 0.0) * allocation
     orders: list[MirrorOrder] = []
