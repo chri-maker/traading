@@ -80,19 +80,35 @@ def main() -> None:
 
     executed = False
     market_open = broker.is_market_open()
+    if cfg.extended_hours and not market_open:
+        notes.append("Extended-hours mode: stock orders sent as pre/after-hours limit orders (fills may be thin/partial).")
     if dry_run:
         notes.append("DRY-RUN: orders computed but not submitted.")
     else:
         for o in orders:
-            # Stock orders need an open market; crypto trades 24/7.
-            if not o.is_crypto and not market_open:
-                notes.append(f"Market closed: skipped {o.side} {o.symbol}.")
-                continue
+            is_stock = not o.is_crypto
             try:
+                # Exits use close_position (market) — only when the market is open.
                 if o.side == "exit":
+                    if is_stock and not market_open:
+                        notes.append(f"Market closed: skipped exit {o.symbol}.")
+                        continue
                     broker.close_position(o.symbol)
+                    continue
+
+                side = OrderSide.BUY if o.side == "buy" else OrderSide.SELL
+                if is_stock and not market_open:
+                    if not cfg.extended_hours:
+                        notes.append(f"Market closed: skipped {o.side} {o.symbol}.")
+                        continue
+                    price = broker.latest_price(o.symbol)
+                    if not price:
+                        notes.append(f"No price for {o.symbol}; skipped.")
+                        continue
+                    # Buffer the limit so thin pre-market books still fill.
+                    limit = price * (1.01 if o.side == "buy" else 0.99)
+                    broker.submit_limit_order(o.symbol, o.qty, side, limit, extended_hours=True)
                 else:
-                    side = OrderSide.BUY if o.side == "buy" else OrderSide.SELL
                     broker.submit_market_order(o.symbol, o.qty, side)
             except Exception as exc:
                 notes.append(f"Order failed {o.side} {o.qty} {o.symbol}: {exc}")

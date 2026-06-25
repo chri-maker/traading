@@ -17,7 +17,7 @@ from alpaca.data.requests import (
 from alpaca.data.timeframe import TimeFrame, TimeFrameUnit
 from alpaca.trading.client import TradingClient
 from alpaca.trading.enums import OrderSide, TimeInForce
-from alpaca.trading.requests import MarketOrderRequest
+from alpaca.trading.requests import LimitOrderRequest, MarketOrderRequest
 
 from .config import Config
 
@@ -201,6 +201,21 @@ class Broker:
 
     def buy(self, symbol: str, qty: float):
         return self.submit_market_order(symbol, qty, OrderSide.BUY)
+
+    def submit_limit_order(self, symbol: str, qty: float, side: OrderSide,
+                           limit_price: float, extended_hours: bool = False):
+        """Limit order — used for pre/after-hours stock fills (extended_hours)."""
+        order = LimitOrderRequest(
+            symbol=symbol,
+            qty=qty,
+            side=side,
+            time_in_force=TimeInForce.DAY,
+            limit_price=round(float(limit_price), 2),
+            extended_hours=extended_hours,
+        )
+        log.info("Submitting %s LIMIT %s x %s @ %.2f (ext=%s)",
+                 side.value, qty, symbol, limit_price, extended_hours)
+        return self.trading.submit_order(order)
 
     def close_position(self, symbol: str):
         log.info("Closing position: %s", symbol)

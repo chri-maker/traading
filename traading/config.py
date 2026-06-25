@@ -191,6 +191,7 @@ class BasketConfig:
     allocation: float
     allow_live: bool
     dry_run: bool
+    extended_hours: bool
 
 
 def load_basket_config() -> BasketConfig:
@@ -204,6 +205,7 @@ def load_basket_config() -> BasketConfig:
         allocation=float(os.getenv("BASKET_ALLOCATION", "1.8")),
         allow_live=os.getenv("BASKET_ALLOW_LIVE", "false").lower() in ("1", "true", "yes"),
         dry_run=os.getenv("BASKET_DRY_RUN", "false").lower() in ("1", "true", "yes"),
+        extended_hours=os.getenv("BASKET_EXTENDED_HOURS", "false").lower() in ("1", "true", "yes"),
     )
 
 

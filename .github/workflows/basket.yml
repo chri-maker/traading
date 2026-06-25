@@ -16,6 +16,10 @@ on:
         description: "Fraction of equity to deploy (>1 = margin). Blank = default."
         type: string
         default: ""
+      extended_hours:
+        description: "Send stock orders as pre/after-hours limit orders (thin fills)"
+        type: boolean
+        default: false
 
 concurrency:
   group: basket
@@ -40,6 +44,7 @@ jobs:
           BASKET_UNIVERSE: ${{ vars.BASKET_UNIVERSE }}
           BASKET_SIZE: ${{ vars.BASKET_SIZE || '40' }}
           BASKET_ALLOCATION: ${{ inputs.allocation || vars.BASKET_ALLOCATION || '1.8' }}
+          BASKET_EXTENDED_HOURS: ${{ inputs.extended_hours && 'true' || 'false' }}
           SMTP_HOST: ${{ vars.SMTP_HOST || 'smtp.gmail.com' }}
           SMTP_PORT: ${{ vars.SMTP_PORT || '587' }}
           SMTP_USER: ${{ secrets.SMTP_USER }}
