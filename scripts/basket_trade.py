@@ -75,7 +75,8 @@ def main() -> None:
     current = {canon(s): (s, q) for s, q in broker.get_all_positions().items()}
 
     orders = compute_basket_orders(
-        weights, broker.latest_price, equity, current, allocation=cfg.allocation
+        weights, broker.latest_price, equity, current,
+        allocation=cfg.allocation, fractional=cfg.fractional,
     )
 
     executed = False
@@ -98,6 +99,11 @@ def main() -> None:
 
                 side = OrderSide.BUY if o.side == "buy" else OrderSide.SELL
                 if is_stock and not market_open:
+                    if cfg.fractional:
+                        # Fractional/notional stock orders aren't allowed in
+                        # extended hours — they deploy at the regular open.
+                        notes.append(f"Market closed: {o.symbol} queued for the open (fractional).")
+                        continue
                     if not cfg.extended_hours:
                         notes.append(f"Market closed: skipped {o.side} {o.symbol}.")
                         continue

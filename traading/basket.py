@@ -58,6 +58,7 @@ def compute_basket_orders(
     current: dict[str, tuple[str, float]],
     allocation: float = 0.95,
     min_notional: float = 10.0,  # Alpaca rejects crypto orders below $10
+    fractional: bool = False,  # size stocks in fractional shares (small accounts)
 ) -> list[BasketOrder]:
     """Diff target equal-weight basket against current holdings.
 
@@ -72,13 +73,17 @@ def compute_basket_orders(
             log.warning("No price for %s; skipping.", sym)
             continue
         dollars = deployable * wt
-        if is_crypto(sym):
+        # Crypto is always fractional; stocks are fractional only in small-account
+        # mode, otherwise whole shares.
+        frac = is_crypto(sym) or fractional
+        if frac:
             qty = round(dollars / price, 6)
         else:
             qty = float(int(dollars // price))
         if qty <= 0:
             continue
-        targets[canon(sym)] = {"symbol": sym, "qty": qty, "price": price, "crypto": is_crypto(sym)}
+        targets[canon(sym)] = {"symbol": sym, "qty": qty, "price": price,
+                               "crypto": is_crypto(sym), "frac": frac}
 
     orders: list[BasketOrder] = []
 
@@ -87,8 +92,10 @@ def compute_basket_orders(
         held = current.get(c)
         held_qty = held[1] if held else 0.0
         delta = t["qty"] - held_qty
-        if t["crypto"]:
-            if abs(delta) * t["price"] < min_notional:
+        if t["frac"]:
+            # Fractional names (crypto + fractional stocks): dust by dollar value.
+            floor = min_notional if t["crypto"] else 1.0
+            if abs(delta) * t["price"] < floor:
                 continue
         else:
             if abs(delta) < 1:

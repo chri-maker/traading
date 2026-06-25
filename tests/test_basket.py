@@ -52,6 +52,18 @@ def test_stock_whole_shares_crypto_fractional():
     assert all(o.side == "buy" for o in orders)
 
 
+def test_fractional_sizing_for_small_account():
+    # $500 account, equal weight across AAPL ($200) + MSFT ($400): ~$237 each.
+    weights = {"AAPL": 0.5, "MSFT": 0.5}
+    whole = compute_basket_orders(weights, price_fn, equity=500.0, current={}, allocation=0.95)
+    frac = compute_basket_orders(weights, price_fn, equity=500.0, current={}, allocation=0.95, fractional=True)
+    # Whole-share MSFT ($400) on ~$237 budget rounds to 0 -> no order.
+    assert not any(o.symbol == "MSFT" for o in whole)
+    # Fractional buys a partial share instead.
+    msft = [o for o in frac if o.symbol == "MSFT"][0]
+    assert 0 < msft.qty < 1 and msft.side == "buy"
+
+
 def test_exits_positions_not_in_basket():
     weights = {"AAPL": 1.0}
     current = {canon("TSM"): ("TSM", 114.0), canon("BTC/USD"): ("BTCUSD", 0.3)}

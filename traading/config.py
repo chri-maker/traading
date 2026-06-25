@@ -192,6 +192,7 @@ class BasketConfig:
     allow_live: bool
     dry_run: bool
     extended_hours: bool
+    fractional: bool
 
 
 def load_basket_config() -> BasketConfig:
@@ -206,6 +207,7 @@ def load_basket_config() -> BasketConfig:
         allow_live=os.getenv("BASKET_ALLOW_LIVE", "false").lower() in ("1", "true", "yes"),
         dry_run=os.getenv("BASKET_DRY_RUN", "false").lower() in ("1", "true", "yes"),
         extended_hours=os.getenv("BASKET_EXTENDED_HOURS", "false").lower() in ("1", "true", "yes"),
+        fractional=os.getenv("BASKET_FRACTIONAL", "false").lower() in ("1", "true", "yes"),
     )
 
 

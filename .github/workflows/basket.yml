@@ -20,6 +20,10 @@ on:
         description: "Send stock orders as pre/after-hours limit orders (thin fills)"
         type: boolean
         default: false
+      fractional:
+        description: "Fractional/notional stock sizing (for small accounts)"
+        type: boolean
+        default: false
 
 concurrency:
   group: basket
@@ -45,6 +49,7 @@ jobs:
           BASKET_SIZE: ${{ vars.BASKET_SIZE || '40' }}
           BASKET_ALLOCATION: ${{ inputs.allocation || vars.BASKET_ALLOCATION || '1.8' }}
           BASKET_EXTENDED_HOURS: ${{ inputs.extended_hours && 'true' || 'false' }}
+          BASKET_FRACTIONAL: ${{ (inputs.fractional && 'true') || vars.BASKET_FRACTIONAL || 'false' }}
           SMTP_HOST: ${{ vars.SMTP_HOST || 'smtp.gmail.com' }}
           SMTP_PORT: ${{ vars.SMTP_PORT || '587' }}
           SMTP_USER: ${{ secrets.SMTP_USER }}
