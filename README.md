@@ -1,14 +1,53 @@
-# traading
+# traading — algorithmic paper-trading toolkit
 
-A small, well-structured **Alpaca paper-trading bot** built around a
-moving-average (MA) crossover strategy. It can **backtest** the strategy on
-historical data and **paper-trade** it live against Alpaca's paper endpoint.
+[![tests](https://github.com/chri-maker/traading/actions/workflows/tests.yml/badge.svg)](https://github.com/chri-maker/traading/actions/workflows/tests.yml)
+![Python](https://img.shields.io/badge/python-3.11+-3776AB?logo=python&logoColor=white)
+![Broker](https://img.shields.io/badge/broker-Alpaca%20(paper)-FFD700)
+![AI](https://img.shields.io/badge/AI-Claude%20API-D97757)
 
-> ⚠️ Educational project. Defaults to **paper trading** (no real money).
-> Trading real money is risky — only point this at a live endpoint if you fully
-> understand the consequences.
+A Python toolkit for **researching, backtesting and running trading strategies** on an
+[Alpaca](https://alpaca.markets/) **paper** account, scheduled end-to-end with GitHub Actions.
 
-## Strategy
+It ships four independent strategies that share one broker layer, one config system and one
+set of safety guards:
+
+| Strategy | What it does | Entry point |
+| --- | --- | --- |
+| **MA crossover** | Classic fast/slow moving-average crossover, with a bar-by-bar backtester | `scripts/run_backtest.py`, `scripts/run_bot.py` |
+| **Diversified basket** | Equal-weight basket of liquid stocks + crypto, rebalanced daily (crypto-only on weekends), fractional sizing for small accounts | `scripts/basket_trade.py` |
+| **Congress mirror** | Ranks members of Congress by estimated return from public STOCK Act disclosures and mirrors the top performer | `scripts/daily_job.py` |
+| **AI strategy** | Claude proposes a long-only target portfolio; every output is validated and clamped before any order | `scripts/ai_trade.py` |
+
+> ⚠️ **Educational project. Paper trading by default. Not financial advice.**
+
+## Highlights
+
+- **Safety first** — paper-only unless explicitly overridden, market-hours checks, per-position caps,
+  total-allocation limits and `--dry-run` everywhere.
+- **LLM output treated as untrusted input** — the AI strategy can only pick from an allowed universe,
+  hallucinated or non-tradable tickers are dropped, and weights are clamped.
+- **Pure, testable core** — strategy logic runs on plain data, so the same code powers the backtester
+  and the live bot. **50+ unit tests**, no network or credentials required.
+- **Fully automated** — GitHub Actions workflows for daily runs, weekend crypto rebalancing,
+  connection checks and an emergency "flatten account" job. State persists between runs.
+- **Pluggable data providers** and env-based configuration (no secrets in code).
+
+## Tech stack
+
+Python · alpaca-py · Anthropic SDK (Claude) · pandas · pytest · GitHub Actions
+
+## Contents
+
+1. [MA-crossover bot](#ma-crossover-bot) — setup, usage, configuration, tests
+2. [Diversified basket](#diversified-basket)
+3. [Congress-mirror bot](#congress-mirror-bot)
+4. [AI-driven strategy](#ai-driven-strategy)
+
+---
+
+## MA-crossover bot
+
+### Strategy
 
 Classic fast/slow simple-moving-average crossover:
 
@@ -19,24 +58,27 @@ The decision logic lives in [`traading/strategy.py`](traading/strategy.py) and i
 pure (operates on a list of prices), so the **exact same code** drives both the
 backtester and the live bot.
 
-## Project layout
+### Project layout
 
 ```
 traading/
-├── traading/            # package
-│   ├── config.py        # env-based configuration (no secrets in code)
-│   ├── strategy.py      # pure MA-crossover logic
-│   ├── broker.py        # Alpaca SDK wrapper (account, data, orders)
-│   ├── backtest.py      # bar-by-bar backtester
-│   └── bot.py           # live paper-trading loop
-├── scripts/
-│   ├── check_account.py # verify your keys + print account status
-│   ├── run_backtest.py  # backtest over historical data
-│   └── run_bot.py       # run the live (paper) bot
-└── tests/               # unit tests for strategy + backtest (no network)
+├── traading/                # package
+│   ├── config.py            # env-based configuration (no secrets in code)
+│   ├── strategy.py          # pure MA-crossover logic
+│   ├── backtest.py          # bar-by-bar backtester
+│   ├── bot.py               # live paper-trading loop
+│   ├── basket.py            # diversified stock + crypto basket
+│   ├── broker.py            # Alpaca SDK wrapper (account, data, orders)
+│   ├── notify.py            # email summaries
+│   ├── ai/strategy.py       # Claude-driven portfolio selection + validation
+│   └── congress/            # disclosures → ranking → mirror → report
+├── scripts/                 # CLI entry points (backtest, bots, daily jobs, close_all)
+├── tests/                   # unit tests, no network or credentials required
+├── state/                   # persisted state between scheduled runs
+└── .github/workflows/       # scheduled jobs, connection check, flatten, tests
 ```
 
-## Setup
+### Setup
 
 1. **Install dependencies** (a virtualenv is recommended):
 
@@ -66,7 +108,7 @@ traading/
    > 🔒 `.env` is gitignored. **Never commit real keys.** If a key is ever
    > exposed, regenerate it in the Alpaca dashboard.
 
-## Usage
+### Usage
 
 Verify your connection first:
 
@@ -87,7 +129,7 @@ Run the live paper bot (Ctrl+C to stop):
 python -m scripts.run_bot
 ```
 
-## Configuration
+### Configuration
 
 All behavior is set via environment variables (see `.env.example`):
 
@@ -100,7 +142,7 @@ All behavior is set via environment variables (see `.env.example`):
 | `POSITION_SIZE` | Fraction of buying power per position (0–1)         | `0.1`   |
 | `POLL_INTERVAL` | Seconds between live evaluation cycles             | `60`    |
 
-## Tests
+### Tests
 
 ```bash
 pip install pytest
@@ -110,7 +152,7 @@ pytest
 The tests cover the strategy and backtester and require **no** network or
 credentials.
 
-## Notes & limitations
+### Notes & limitations
 
 - The backtester ignores commissions, slippage, and partial fills — it's a
   sanity check, not a production simulator.
@@ -119,14 +161,14 @@ credentials.
 
 ---
 
-# Congress-mirror bot
+## Congress-mirror bot
 
 A second, independent strategy: rank the most active members of Congress by
 their **estimated** trailing-12-month return (from public STOCK Act
 disclosures), **mirror the top performer's positions** in your Alpaca paper
 account, and **email you a summary** each weekday morning.
 
-## ⚠️ Read this before trusting it
+### ⚠️ Read this before trusting it
 
 The data this is built on is fundamentally limited, so parts of it are
 **estimates, not facts**:
@@ -147,7 +189,7 @@ The data this is built on is fundamentally limited, so parts of it are
 
 This is an educational **paper-trading** project. Not financial advice.
 
-## How it works
+### How it works
 
 ```
 FMP disclosures ─▶ rank_members (est. trailing-12mo return)
@@ -166,14 +208,14 @@ Modules live in [`traading/congress/`](traading/congress/): `providers.py`
 `state.py` (new-disclosure tracking), `report.py` (summary). Email is in
 [`traading/notify.py`](traading/notify.py).
 
-## Try it offline first (no keys, no network)
+### Try it offline first (no keys, no network)
 
 ```bash
 python -m scripts.rank_members --sample        # leaderboard from bundled fixture
 python -m scripts.daily_job --sample --dry-run # full pipeline, fake prices, no orders
 ```
 
-## Run it for real
+### Run it for real
 
 1. Fill in the **Congress-mirror** section of `.env` (see `.env.example`):
    `FMP_API_KEY`, the `SMTP_*`/`EMAIL_*` values, and `MIRROR_ALLOCATION`.
@@ -187,7 +229,7 @@ python -m scripts.daily_job --sample --dry-run # full pipeline, fake prices, no 
 > every environment. Run where outbound internet is open — your machine or the
 > GitHub Action below.
 
-## Scheduling (GitHub Actions)
+### Scheduling (GitHub Actions)
 
 [`.github/workflows/congress-mirror.yml`](.github/workflows/congress-mirror.yml)
 runs the job every weekday near US market open and commits the
@@ -236,7 +278,28 @@ submit orders when the market is closed.
 
 ---
 
-# AI-driven strategy
+## Diversified basket
+
+A rules-based strategy with **no AI and no external data** beyond Alpaca. It holds roughly N
+equal-weight positions across a fixed universe of liquid stocks and a few cryptocurrencies and
+rebalances toward those targets. Anything held but not in the basket is exited.
+
+- **Weekdays** (~09:35 ET): full rebalance of stocks and crypto.
+- **Weekends**: crypto-only rebalance (stock orders are skipped automatically while the market is closed).
+- **Small accounts**: fractional/notional sizing for stocks and crypto, with a dust floor to avoid tiny orders.
+- **Extended hours**: optional pre/after-hours limit orders.
+
+Configure it in `.env` (`BASKET_UNIVERSE`, `BASKET_SIZE`, `BASKET_ALLOCATION`, `BASKET_DRY_RUN`,
+`BASKET_ALLOW_LIVE`) and schedule it with
+[`.github/workflows/basket.yml`](.github/workflows/basket.yml).
+
+```bash
+python -m scripts.basket_trade --dry-run
+```
+
+---
+
+## AI-driven strategy
 
 A broader strategy where **Claude** chooses the portfolio. Each weekday it reads
 a compact snapshot of a fixed universe of liquid stocks (latest price, 30-day
@@ -273,3 +336,9 @@ each weekday. Add one secret beyond the Alpaca pair:
 
 Tuning knobs are repo **Variables**: `AI_MODEL`, `AI_ALLOCATION`,
 `AI_MAX_POSITIONS`, `AI_MAX_POSITION_PCT`, `AI_UNIVERSE`, `AI_USE_CONGRESS`.
+
+---
+
+## License
+
+Released under the [MIT License](LICENSE). Built by [Christian Vitale](https://github.com/chri-maker).
